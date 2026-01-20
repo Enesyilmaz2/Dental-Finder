@@ -2,11 +2,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { DentalClinic } from "../types";
 
-// API anahtarını kontrol et ve başlat
+// API anahtarını güvenli bir şekilde al
 const getAIInstance = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === "undefined" || apiKey === "") {
-    throw new Error("API_KEY_MISSING");
+  // Vercel bazen süreci hızlandırmak için değişkenleri farklı şekillerde sunabilir
+  const apiKey = process.env.API_KEY || (window as any).process?.env?.API_KEY;
+  
+  if (!apiKey || apiKey === "undefined" || apiKey === "" || apiKey === "null") {
+    throw new Error("API_KEY_NOT_FOUND");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -20,31 +22,23 @@ export const fetchDentalClinics = async (
   try {
     ai = getAIInstance();
   } catch (e) {
-    throw new Error("Sistem Yapılandırması Hatası: Vercel üzerinde API_KEY tanımlanmamış veya Redeploy yapılmamış. Lütfen Environment Variables ayarlarını kontrol edin.");
+    throw new Error("⚠️ SİSTEM HATASI: API Anahtarı Bulunamadı! \n\nÇözüm: \n1. Vercel Settings > Environment Variables kısmına API_KEY eklediğinizden emin olun.\n2. Değişikliği yaptıktan sonra Deployments sekmesine gidip REDEPLOY yapın.");
   }
 
-  if (onProgress) onProgress(`${location} bölgesi taranıyor. Kayıtlar Google kaynakları üzerinden analiz ediliyor...`);
+  if (onProgress) onProgress(`${location} bölgesi taranıyor. Google Maps ve yerel rehberler analiz ediliyor...`);
 
   const searchPrompt = `
     GÖREV: "${location}" bölgesindeki TÜM diş hekimlerini, diş hastanelerini ve kliniklerini bul.
-    
-    HEDEF: En az 80-100 arası benzersiz ve güncel kayıt. 
-    Bölgeyi tüm ilçeleriyle birlikte (Örn: ${location} merkez ve ilçeler) derinlemesine tara.
-    
-    ÖNEMLİ KURALLAR:
-    1. Sabit hatlarla birlikte mutlaka CEP TELEFONU (GSM - 05xx...) numaralarını da bul.
-    2. Her kayıt için sourceLinks (kaynak URL) mutlaka ekle. 
-    3. Farklı kaynaklardan gelen aynı isimleri birleştir.
-    4. Fotoğraf ekleme.
-    
+    HEDEF: En az 80-100 arası benzersiz kayıt.
+    DETAY: İlçeleriyle birlikte derinlemesine tara. Cep telefonlarına (GSM) öncelik ver.
     JSON FORMATI:
     [{
-      "name": "Klinik/Hekim Adı",
-      "phone": "0422... , 0532... (Virgülle tüm numaraları ekle)",
-      "address": "Tam Adres",
+      "name": "Klinik Adı",
+      "phone": "Numaralar",
+      "address": "Adres",
       "city": "Şehir",
       "district": "İlçe",
-      "sourceLinks": [{"name": "Google Maps", "url": "https://www.google.com/maps/..."}]
+      "sourceLinks": [{"name": "Google Maps", "url": "link"}]
     }]
   `;
 
@@ -64,7 +58,7 @@ export const fetchDentalClinics = async (
       const results = JSON.parse(jsonMatch[0]);
       onNewData(results.map((r: any, idx: number) => ({
         ...r,
-        id: `dent-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `dent-${Date.now()}-${idx}`,
         status: 'none',
         notes: '',
         sources: r.sourceLinks?.map((s: any) => s.name) || []
@@ -72,6 +66,6 @@ export const fetchDentalClinics = async (
     }
   } catch (error: any) {
     console.error("Fetch Error:", error);
-    throw new Error("Tarama işlemi sırasında bir hata oluştu. Lütfen bağlantınızı ve API limitlerinizi kontrol edin.");
+    throw new Error("Arama yapılamadı. API limitine takılmış olabilir veya anahtar geçersizdir.");
   }
 };

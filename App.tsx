@@ -9,7 +9,7 @@ import { exportToExcel } from './utils/exportUtil';
 const App: React.FC = () => {
   const [clinics, setClinics] = useState<DentalClinic[]>(() => {
     try {
-      const saved = localStorage.getItem('dental_sync_v8');
+      const saved = localStorage.getItem('dental_sync_v9');
       return saved ? JSON.parse(saved) : [];
     } catch (e) { return []; }
   });
@@ -26,7 +26,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'CARD' | 'LIST'>('CARD');
 
   useEffect(() => {
-    localStorage.setItem('dental_sync_v8', JSON.stringify(clinics));
+    localStorage.setItem('dental_sync_v9', JSON.stringify(clinics));
   }, [clinics]);
 
   const handleSearch = async () => {
@@ -34,7 +34,6 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setProcessedCount(0);
-    setTargetCount(100);
     
     try {
       await fetchDentalClinics(
@@ -48,7 +47,7 @@ const App: React.FC = () => {
             });
             return combined;
           });
-          setProcessedCount(prev => Math.min(prev + newData.length, 100));
+          setProcessedCount(prev => prev + newData.length);
         },
         (status) => setStatusMessage(status)
       );
@@ -98,25 +97,25 @@ const App: React.FC = () => {
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-[#0F172A] text-white transition-all duration-300 flex flex-col shrink-0 z-30 shadow-2xl`}>
         <div className={`p-4 h-12 border-b border-white/5 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && <span className="font-macondo font-black text-blue-400 tracking-wider text-xl">dentalMap</span>}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 hover:bg-white/5 rounded-xl text-slate-500 transition-all ${!isSidebarOpen && 'rotate-180'}`}>
-            <i className="fas fa-chevron-left text-xs"></i>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 hover:bg-white/5 rounded-xl text-slate-500`}>
+            <i className="fas fa-bars text-xs"></i>
           </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide">
           <button onClick={() => { setPageMode('HOME'); setSelectedCityFolder(null); }} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'HOME' && !selectedCityFolder ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5 text-slate-500'}`}>
-            <i className="fas fa-home w-5 text-center text-sm"></i>
+            <i className="fas fa-chart-pie w-5"></i>
             {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Panel</span>}
           </button>
 
           <div className="space-y-1">
             <div className={`px-3 mb-1 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{isSidebarOpen ? 'Klasörler' : 'İller'}</span>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Klasörler</span>
             </div>
             {cityGroups.map(([city, count]) => (
               <button key={city} onClick={() => { setPageMode('CITY_LISTS'); setSelectedCityFolder(city); }} className={`w-full flex items-center justify-between p-2 rounded-xl transition-all ${selectedCityFolder === city ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
                 <div className="flex items-center gap-3">
-                  <i className="fas fa-folder text-blue-500 w-5 text-center text-sm"></i>
+                  <i className="fas fa-folder text-blue-500 text-sm"></i>
                   {isSidebarOpen && <span className="text-[10px] font-black uppercase tracking-tight truncate">{city}</span>}
                 </div>
                 {isSidebarOpen && <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-lg">{count}</span>}
@@ -129,12 +128,12 @@ const App: React.FC = () => {
               <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">CRM</span>
             </div>
             <button onClick={() => setPageMode('CONVERSATIONS_POSITIVE')} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'CONVERSATIONS_POSITIVE' ? 'bg-emerald-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
-              <i className="fas fa-smile w-5 text-center text-sm"></i>
+              <i className="fas fa-check-circle w-5"></i>
               {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Olumlu</span>}
               {isSidebarOpen && <span className="text-[10px] font-black opacity-60 ml-auto">{stats.positive}</span>}
             </button>
             <button onClick={() => setPageMode('CONVERSATIONS_NEGATIVE')} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'CONVERSATIONS_NEGATIVE' ? 'bg-red-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
-              <i className="fas fa-frown w-5 text-center text-sm"></i>
+              <i className="fas fa-times-circle w-5"></i>
               {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Olumsuz</span>}
               {isSidebarOpen && <span className="text-[10px] font-black opacity-60 ml-auto">{stats.negative}</span>}
             </button>
@@ -163,14 +162,15 @@ const App: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-50/30">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <i className="fas fa-exclamation-triangle text-xl"></i>
-                <span className="text-[11px] font-black uppercase tracking-wide">Yapılandırma Hatası</span>
-              </div>
-              <p className="text-[10px] font-medium leading-relaxed">{error}</p>
-              <div className="mt-2 text-[9px] bg-white/50 p-2 rounded-lg border border-red-200">
-                <span className="font-bold">Çözüm:</span> Vercel Settings > Environment Variables kısmına <code className="bg-red-100 px-1 rounded">API_KEY</code> ekleyin ve ardından <strong>Redeploy</strong> yapın.
+            <div className="mb-6 p-5 bg-white border-2 border-red-500 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <i className="fas fa-key text-xl"></i>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-red-700 font-black text-xs uppercase tracking-widest mb-1">API Yapılandırma Gerekli</h3>
+                  <p className="text-[10px] text-slate-600 font-bold whitespace-pre-wrap leading-relaxed">{error}</p>
+                </div>
               </div>
             </div>
           )}
@@ -183,14 +183,14 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex-1">
                    <div className="flex justify-between items-end mb-1">
-                     <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest">Veri Toplanıyor...</h4>
-                     <span className="text-blue-600 font-black text-xs">{processedCount} / {targetCount}</span>
+                     <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest">Tarama Yapılıyor...</h4>
+                     <span className="text-blue-600 font-black text-xs">{processedCount}+ Kayıt</span>
                    </div>
                    <p className="text-blue-600/60 text-[9px] font-black uppercase tracking-widest line-clamp-1">{statusMessage}</p>
                 </div>
               </div>
               <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 transition-all duration-700 ease-out" style={{ width: `${Math.max(5, (processedCount/targetCount) * 100)}%` }}></div>
+                <div className="h-full bg-blue-600 animate-[progress_2s_infinite_linear]" style={{ width: '40%' }}></div>
               </div>
             </div>
           )}
@@ -198,7 +198,7 @@ const App: React.FC = () => {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
             <div>
               <h1 className="text-2xl font-black text-[#0F172A] tracking-tighter uppercase leading-none">
-                {selectedCityFolder || (pageMode === 'HOME' ? 'Klinikler' : pageMode === 'CONVERSATIONS_POSITIVE' ? 'Olumlu' : 'Olumsuz')}
+                {selectedCityFolder || (pageMode === 'HOME' ? 'Kontrol Paneli' : pageMode === 'CONVERSATIONS_POSITIVE' ? 'Olumlu Görüşmeler' : 'Olumsuz Sonuçlar')}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <div className="h-0.5 w-6 bg-blue-600 rounded-full"></div>
@@ -233,8 +233,8 @@ const App: React.FC = () => {
         </main>
 
         <footer className="bg-white border-t border-slate-100 px-4 py-2 shrink-0">
-          <div className="flex flex-col gap-1.5 max-w-screen-2xl mx-auto">
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
+          <div className="flex flex-col gap-1 max-w-screen-2xl mx-auto">
+            <div className="flex flex-wrap items-center justify-center gap-x-6">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                 <span className="text-[9px] font-bold text-slate-600">Toplam Olumlu: {stats.positive}</span>
@@ -248,9 +248,9 @@ const App: React.FC = () => {
                 <span className="text-[9px] font-bold text-slate-600">Olumsuz: {stats.negative}</span>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center text-center pt-1 border-t border-slate-50">
-              <p className="text-[8px] text-slate-400 font-medium">Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. Tüm haklar saklıdır © 2026</p>
-              <p className="text-[9px] font-black text-[#0F172A] mt-0.5 tracking-wider"><span className="text-blue-600">Enes YILMAZ</span> tarafından hazırlanmıştır.</p>
+            <div className="flex flex-col items-center justify-center text-center">
+              <p className="text-[8px] text-slate-400 font-medium italic">Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. © 2026</p>
+              <p className="text-[9px] font-black text-[#0F172A] tracking-wider">Tasarım & Yazılım: <span className="text-blue-600">Enes YILMAZ</span></p>
             </div>
           </div>
         </footer>
