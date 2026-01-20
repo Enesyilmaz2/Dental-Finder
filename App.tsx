@@ -9,7 +9,8 @@ import { exportToExcel } from './utils/exportUtil';
 const App: React.FC = () => {
   const [clinics, setClinics] = useState<DentalClinic[]>(() => {
     try {
-      const saved = localStorage.getItem('dental_sync_v9');
+      // Sürüm güncellendi: v12
+      const saved = localStorage.getItem('dental_sync_v12');
       return saved ? JSON.parse(saved) : [];
     } catch (e) { return []; }
   });
@@ -17,23 +18,30 @@ const App: React.FC = () => {
   const [citySearch, setCitySearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [processedCount, setProcessedCount] = useState(0);
-  const [targetCount, setTargetCount] = useState(100);
   const [error, setError] = useState<string | null>(null);
+  const [manualKey, setManualKey] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [pageMode, setPageMode] = useState<PageMode>('HOME');
   const [selectedCityFolder, setSelectedCityFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'CARD' | 'LIST'>('CARD');
 
   useEffect(() => {
-    localStorage.setItem('dental_sync_v9', JSON.stringify(clinics));
+    localStorage.setItem('dental_sync_v12', JSON.stringify(clinics));
   }, [clinics]);
+
+  const saveApiKey = () => {
+    if (manualKey.trim()) {
+      localStorage.setItem('DENTAL_MAP_SECRET_KEY', manualKey.trim());
+      setError(null);
+      window.location.reload();
+    }
+  };
 
   const handleSearch = async () => {
     if (!citySearch.trim()) return;
     setIsLoading(true);
     setError(null);
-    setProcessedCount(0);
+    setStatusMessage(`${citySearch} bölgesi için derin tarama başlatıldı...`);
     
     try {
       await fetchDentalClinics(
@@ -47,16 +55,15 @@ const App: React.FC = () => {
             });
             return combined;
           });
-          setProcessedCount(prev => prev + newData.length);
         },
         (status) => setStatusMessage(status)
       );
       setCitySearch('');
     } catch (err: any) {
-      setError(err.message);
+      if (err.message === "API_KEY_REQUIRED") setError("API_KEY_REQUIRED");
+      else alert(err.message);
     } finally {
       setIsLoading(false);
-      setStatusMessage('');
     }
   };
 
@@ -84,174 +91,200 @@ const App: React.FC = () => {
     return list;
   }, [clinics, pageMode, selectedCityFolder]);
 
-  const updateStatus = (id: string, status: DentalClinic['status']) => {
-    setClinics(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-  };
-
-  const updateNote = (id: string, notes: string) => {
-    setClinics(prev => prev.map(c => c.id === id ? { ...c, notes } : c));
-  };
+  if (error === "API_KEY_REQUIRED") {
+    return (
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full space-y-8 bg-slate-800/50 p-10 rounded-[2.5rem] shadow-2xl border border-white/10 backdrop-blur-xl">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-500/40">
+              <i className="fas fa-key text-3xl"></i>
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tighter">Sistem Kilidi</h2>
+            <p className="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-widest leading-none">Netlify veya Yerel Güvenlik Anahtarı Gerekli</p>
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-blue-400 text-[9px] mt-4 block hover:underline">Ücretli API ve Faturalandırma Hakkında Bilgi</a>
+          </div>
+          <div className="space-y-4">
+            <input 
+              type="password" 
+              placeholder="Gemini API Key..." 
+              className="w-full bg-white/5 border border-white/10 px-6 py-4 rounded-2xl text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-600"
+              value={manualKey}
+              onChange={(e) => setManualKey(e.target.value)}
+            />
+            <button onClick={saveApiKey} className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20">
+              Uygulamayı Başlat
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex h-screen overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] flex h-screen overflow-hidden font-sans text-slate-900">
+      {/* SIDEBAR */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-[#0F172A] text-white transition-all duration-300 flex flex-col shrink-0 z-30 shadow-2xl`}>
-        <div className={`p-4 h-12 border-b border-white/5 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          {isSidebarOpen && <span className="font-macondo font-black text-blue-400 tracking-wider text-xl">dentalMap</span>}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 hover:bg-white/5 rounded-xl text-slate-500`}>
-            <i className="fas fa-bars text-xs"></i>
+        <div className="p-4 h-14 border-b border-white/5 flex items-center justify-between">
+          {isSidebarOpen && <span className="font-macondo font-black text-blue-400 text-2xl tracking-tight">dentalMap</span>}
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-500 hover:text-white transition-colors">
+            <i className={`fas ${isSidebarOpen ? 'fa-indent' : 'fa-outdent'}`}></i>
           </button>
         </div>
-
-        <nav className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide">
-          <button onClick={() => { setPageMode('HOME'); setSelectedCityFolder(null); }} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'HOME' && !selectedCityFolder ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5 text-slate-500'}`}>
-            <i className="fas fa-chart-pie w-5"></i>
-            {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Panel</span>}
-          </button>
+        
+        <nav className="flex-1 overflow-y-auto p-3 space-y-6 scrollbar-hide">
+          <div className="space-y-1">
+            <button onClick={() => {setPageMode('HOME'); setSelectedCityFolder(null)}} className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${pageMode === 'HOME' && !selectedCityFolder ? 'bg-blue-600 shadow-lg shadow-blue-600/30' : 'hover:bg-white/5 text-slate-400'}`}>
+              <i className="fas fa-home w-5"></i>
+              {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Genel Görünüm</span>}
+            </button>
+          </div>
 
           <div className="space-y-1">
-            <div className={`px-3 mb-1 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Klasörler</span>
+            <div className={`px-4 mb-2 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">{isSidebarOpen ? 'Bölge Klasörleri' : 'İl'}</span>
             </div>
             {cityGroups.map(([city, count]) => (
-              <button key={city} onClick={() => { setPageMode('CITY_LISTS'); setSelectedCityFolder(city); }} className={`w-full flex items-center justify-between p-2 rounded-xl transition-all ${selectedCityFolder === city ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
-                <div className="flex items-center gap-3">
+              <button key={city} onClick={() => {setPageMode('CITY_LISTS'); setSelectedCityFolder(city)}} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${selectedCityFolder === city ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
+                <div className="flex items-center gap-3 truncate">
                   <i className="fas fa-folder text-blue-500 text-sm"></i>
-                  {isSidebarOpen && <span className="text-[10px] font-black uppercase tracking-tight truncate">{city}</span>}
+                  {isSidebarOpen && <span className="text-[10px] font-bold uppercase truncate">{city}</span>}
                 </div>
-                {isSidebarOpen && <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-lg">{count}</span>}
+                {isSidebarOpen && <span className="text-[9px] font-black bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-lg">{count}</span>}
               </button>
             ))}
           </div>
 
           <div className="space-y-1">
-            <div className={`px-3 mb-1 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">CRM</span>
+            <div className={`px-4 mb-2 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">CRM Durumu</span>
             </div>
-            <button onClick={() => setPageMode('CONVERSATIONS_POSITIVE')} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'CONVERSATIONS_POSITIVE' ? 'bg-emerald-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
-              <i className="fas fa-check-circle w-5"></i>
-              {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Olumlu</span>}
-              {isSidebarOpen && <span className="text-[10px] font-black opacity-60 ml-auto">{stats.positive}</span>}
+            <button onClick={() => setPageMode('CONVERSATIONS_POSITIVE')} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${pageMode === 'CONVERSATIONS_POSITIVE' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/5 text-slate-400'}`}>
+              <div className="flex items-center gap-3">
+                <i className="fas fa-smile text-sm"></i>
+                {isSidebarOpen && <span className="text-[10px] font-bold uppercase">Olumlu</span>}
+              </div>
+              {isSidebarOpen && <span className="text-[9px] font-black opacity-80">{stats.positive}</span>}
             </button>
-            <button onClick={() => setPageMode('CONVERSATIONS_NEGATIVE')} className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${pageMode === 'CONVERSATIONS_NEGATIVE' ? 'bg-red-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
-              <i className="fas fa-times-circle w-5"></i>
-              {isSidebarOpen && <span className="text-[11px] font-black uppercase tracking-widest">Olumsuz</span>}
-              {isSidebarOpen && <span className="text-[10px] font-black opacity-60 ml-auto">{stats.negative}</span>}
+            <button onClick={() => setPageMode('CONVERSATIONS_NEGATIVE')} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${pageMode === 'CONVERSATIONS_NEGATIVE' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'hover:bg-white/5 text-slate-400'}`}>
+              <div className="flex items-center gap-3">
+                <i className="fas fa-frown text-sm"></i>
+                {isSidebarOpen && <span className="text-[10px] font-bold uppercase">Olumsuz</span>}
+              </div>
+              {isSidebarOpen && <span className="text-[9px] font-black opacity-80">{stats.negative}</span>}
             </button>
           </div>
         </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
-        <header className="h-12 bg-white border-b border-slate-100 flex items-center px-4 gap-4 shrink-0 z-20">
-          {!isSidebarOpen && <span className="font-macondo font-black text-blue-600 tracking-wider text-lg shrink-0">dentalMap</span>}
-          <div className="flex-1 max-w-xl relative">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* HEADER */}
+        <header className="h-14 bg-white border-b border-slate-100 flex items-center px-6 gap-6 shrink-0 z-20">
+          {!isSidebarOpen && <span className="font-macondo font-black text-blue-600 text-xl tracking-tight shrink-0">dentalMap</span>}
+          <div className="flex-1 max-w-2xl relative">
+            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input 
               type="text" 
-              placeholder="Şehir ve ilçe detaylarıyla tarayın..." 
-              className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3 py-1.5 rounded-xl text-[11px] outline-none focus:border-blue-500 transition-all font-medium text-slate-800"
+              placeholder="Şehir ve ilçe ismiyle tarama yapın... (Örn: İstanbul Kadıköy)" 
+              className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-2 rounded-2xl text-[11px] font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
               value={citySearch}
               onChange={(e) => setCitySearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-xl text-[10px] font-black shadow-md shadow-blue-500/10 disabled:opacity-50 transition-all shrink-0 uppercase tracking-widest">
-            {isLoading ? <i className="fas fa-spinner animate-spin"></i> : "ARA"}
+          <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 disabled:opacity-50 transition-all shrink-0">
+            {isLoading ? <i className="fas fa-spinner animate-spin"></i> : 'ARAMAYI BAŞLAT'}
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-50/30">
-          {error && (
-            <div className="mb-6 p-5 bg-white border-2 border-red-500 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shrink-0">
-                  <i className="fas fa-key text-xl"></i>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-red-700 font-black text-xs uppercase tracking-widest mb-1">API Yapılandırma Gerekli</h3>
-                  <p className="text-[10px] text-slate-600 font-bold whitespace-pre-wrap leading-relaxed">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
+        <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC] scroll-smooth">
           {isLoading && (
-            <div className="mb-6 bg-white p-4 rounded-2xl border border-blue-100 shadow-xl shadow-blue-500/5">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg animate-pulse">
-                  <i className="fas fa-satellite-dish"></i>
+            <div className="mb-8 bg-white p-5 rounded-[2rem] border border-blue-100 shadow-xl shadow-blue-500/5 animate-in slide-in-from-top-4">
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl animate-pulse">
+                  <i className="fas fa-database"></i>
                 </div>
                 <div className="flex-1">
-                   <div className="flex justify-between items-end mb-1">
-                     <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest">Tarama Yapılıyor...</h4>
-                     <span className="text-blue-600 font-black text-xs">{processedCount}+ Kayıt</span>
-                   </div>
-                   <p className="text-blue-600/60 text-[9px] font-black uppercase tracking-widest line-clamp-1">{statusMessage}</p>
+                  <div className="flex justify-between items-end mb-2">
+                    <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest leading-none">Ağ Taraması Sürüyor</h4>
+                    <span className="text-blue-600 font-black text-xs">Kayıtlar Toplanıyor...</span>
+                  </div>
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-none truncate">{statusMessage}</p>
                 </div>
               </div>
-              <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 animate-[progress_2s_infinite_linear]" style={{ width: '40%' }}></div>
+              <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 animate-[progress_2s_infinite_linear]" style={{ width: '60%' }}></div>
               </div>
             </div>
           )}
 
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
             <div>
               <h1 className="text-2xl font-black text-[#0F172A] tracking-tighter uppercase leading-none">
                 {selectedCityFolder || (pageMode === 'HOME' ? 'Kontrol Paneli' : pageMode === 'CONVERSATIONS_POSITIVE' ? 'Olumlu Görüşmeler' : 'Olumsuz Sonuçlar')}
               </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="h-0.5 w-6 bg-blue-600 rounded-full"></div>
-                <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em]">{filteredClinics.length} kayıt listelendi</p>
-              </div>
+              <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2">Sistemde toplam {filteredClinics.length} kayıt listeleniyor</p>
             </div>
             
-            <div className="flex items-center gap-2">
-              <div className="bg-white border border-slate-100 p-0.5 rounded-xl flex shadow-sm">
-                <button onClick={() => setViewMode('CARD')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'CARD' ? 'bg-[#0F172A] text-white' : 'text-slate-400'}`}>
+            <div className="flex items-center gap-3">
+              <div className="bg-white border border-slate-200 p-1 rounded-2xl flex shadow-sm">
+                <button onClick={() => setViewMode('CARD')} className={`px-4 py-2 rounded-xl transition-all ${viewMode === 'CARD' ? 'bg-[#0F172A] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
                   <i className="fas fa-th-large text-xs"></i>
                 </button>
-                <button onClick={() => setViewMode('LIST')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'LIST' ? 'bg-[#0F172A] text-white' : 'text-slate-400'}`}>
+                <button onClick={() => setViewMode('LIST')} className={`px-4 py-2 rounded-xl transition-all ${viewMode === 'LIST' ? 'bg-[#0F172A] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
                   <i className="fas fa-list text-xs"></i>
                 </button>
               </div>
-              <button onClick={() => exportToExcel(filteredClinics)} className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-[9px] font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/10 uppercase tracking-widest">
-                <i className="fas fa-file-excel text-xs"></i> Excel Raporu
+              <button onClick={() => exportToExcel(filteredClinics)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all">
+                <i className="fas fa-file-excel text-sm"></i> EXCEL RAPORU
               </button>
             </div>
           </div>
 
-          {viewMode === 'CARD' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 gap-4">
-              {filteredClinics.map(clinic => (
-                <ClinicCard key={clinic.id} clinic={clinic} onUpdateStatus={updateStatus} onUpdateNote={updateNote} />
-              ))}
+          {filteredClinics.length === 0 ? (
+            <div className="h-[40vh] flex flex-col items-center justify-center text-center opacity-30 grayscale">
+              <i className="fas fa-folder-open text-6xl mb-4"></i>
+              <p className="font-black uppercase tracking-widest text-[11px]">Görüntülenecek veri bulunamadı</p>
             </div>
           ) : (
-            <ClinicList clinics={filteredClinics} onUpdateStatus={updateStatus} />
+            viewMode === 'CARD' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 gap-5">
+                {filteredClinics.map(clinic => (
+                  <ClinicCard 
+                    key={clinic.id} 
+                    clinic={clinic} 
+                    onUpdateStatus={(id, s) => setClinics(prev => prev.map(c => c.id === id ? {...c, status: s} : c))} 
+                    onUpdateNote={(id, n) => setClinics(prev => prev.map(c => c.id === id ? {...c, notes: n} : c))} 
+                  />
+                ))}
+              </div>
+            ) : (
+              <ClinicList clinics={filteredClinics} onUpdateStatus={(id, s) => setClinics(prev => prev.map(c => c.id === id ? {...c, status: s} : c))} />
+            )
           )}
         </main>
 
-        <footer className="bg-white border-t border-slate-100 px-4 py-2 shrink-0">
-          <div className="flex flex-col gap-1 max-w-screen-2xl mx-auto">
-            <div className="flex flex-wrap items-center justify-center gap-x-6">
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                <span className="text-[9px] font-bold text-slate-600">Toplam Olumlu: {stats.positive}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#A3E635]"></div>
-                <span className="text-[9px] font-bold text-slate-600">İletişim: {stats.contacted}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                <span className="text-[9px] font-bold text-slate-600">Olumsuz: {stats.negative}</span>
-              </div>
+        {/* FOOTER */}
+        <footer className="h-10 bg-white border-t border-slate-100 flex items-center justify-between px-6 shrink-0 z-20">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm"></div>
+              <span className="text-[9px] font-black text-slate-500 uppercase">Olumlu: {stats.positive}</span>
             </div>
-            <div className="flex flex-col items-center justify-center text-center">
-              <p className="text-[8px] text-slate-400 font-medium italic">Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. © 2026</p>
-              <p className="text-[9px] font-black text-[#0F172A] tracking-wider">Tasarım & Yazılım: <span className="text-blue-600">Enes YILMAZ</span></p>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-lime-500 shadow-sm"></div>
+              <span className="text-[9px] font-black text-slate-500 uppercase">İletişim: {stats.contacted}</span>
             </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm"></div>
+              <span className="text-[9px] font-black text-slate-500 uppercase">Olumsuz: {stats.negative}</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end leading-none">
+             <p className="text-[8px] text-slate-400 font-medium italic mb-0.5">Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. Tüm haklar saklıdır © 2026</p>
+             <p className="text-[9px] font-black text-[#0F172A] tracking-tight uppercase">
+               Tasarım & Yazılım: <a href="https://www.linkedin.com/in/enesyilmaz1/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 transition-colors">Enes YILMAZ</a>
+             </p>
           </div>
         </footer>
       </div>
