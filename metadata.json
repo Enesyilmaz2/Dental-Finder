@@ -1,0 +1,7 @@
+{
+  "name": "Turkiye Dental Finder",
+  "description": "A comprehensive real-time tool to find dentists, dental clinics, and dental hospitals across Turkey with Card and List views and Excel export capability.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
