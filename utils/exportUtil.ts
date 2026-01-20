@@ -4,32 +4,38 @@ import { DentalClinic } from '../types';
 export const exportToExcel = (data: DentalClinic[]) => {
   if (data.length === 0) return;
 
-  // Excel'in (XLSX/CSV) doğru sütunlaması için noktalı virgül kullanılır.
-  const headers = ['Şehir', 'İlçe', 'Klinik Adı', 'Telefon Numarası'];
+  // CSV için başlıklar
+  const headers = ['Klinik Adi', 'Telefon', 'Sehir', 'Ilce', 'Adres', 'Web Sitesi', 'Rating', 'Durum'];
+  
   const rows = data.map(c => [
+    `"${c.name.replace(/"/g, '""')}"`,
+    `"${c.phone.replace(/"/g, '""')}"`,
     `"${c.city}"`,
     `"${c.district}"`,
-    `"${c.name}"`,
-    `"${c.phone}"`
+    `"${c.address.replace(/"/g, '""')}"`,
+    `"${c.website || ''}"`,
+    `"${c.rating || ''}"`,
+    `"${c.status || 'Hicbiri'}"`
   ]);
 
   const csvContent = [
     headers.join(';'),
     ...rows.map(r => r.join(';'))
-  ].join('\r\n');
+  ].join('\n');
 
-  // UTF-8 BOM: Excel'in Türkçe karakterleri tanıması için zorunludur.
+  // UTF-8 BOM ekleyerek Türkçe karakterlerin Excel'de düzgün görünmesini sağlıyoruz
   const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   
   const link = document.createElement('a');
-  const fileName = `dis_klinikleri_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const fileName = `dental_liste_${new Date().toISOString().slice(0,10)}.csv`;
   
   link.setAttribute('href', url);
   link.setAttribute('download', fileName);
-  link.style.visibility = 'hidden';
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
