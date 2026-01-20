@@ -58,7 +58,6 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
       setStatusMessage('');
-      // İlerlemeyi sıfırlama, kullanıcı sonucu görsün
     }
   };
 
@@ -96,7 +95,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex h-screen overflow-hidden font-sans">
-      {/* Sidebar */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-[#0F172A] text-white transition-all duration-300 flex flex-col shrink-0 z-30 shadow-2xl`}>
         <div className={`p-4 h-12 border-b border-white/5 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && <span className="font-macondo font-black text-blue-400 tracking-wider text-xl">dentalMap</span>}
@@ -113,7 +111,7 @@ const App: React.FC = () => {
 
           <div className="space-y-1">
             <div className={`px-3 mb-1 flex items-center justify-between ${!isSidebarOpen && 'justify-center'}`}>
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{isSidebarOpen ? 'Şehirler' : 'İller'}</span>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{isSidebarOpen ? 'Klasörler' : 'İller'}</span>
             </div>
             {cityGroups.map(([city, count]) => (
               <button key={city} onClick={() => { setPageMode('CITY_LISTS'); setSelectedCityFolder(city); }} className={`w-full flex items-center justify-between p-2 rounded-xl transition-all ${selectedCityFolder === city ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-500'}`}>
@@ -144,14 +142,9 @@ const App: React.FC = () => {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 bg-white">
-        {/* Header - Küçültüldü */}
         <header className="h-12 bg-white border-b border-slate-100 flex items-center px-4 gap-4 shrink-0 z-20">
-          {!isSidebarOpen && (
-            <span className="font-macondo font-black text-blue-600 tracking-wider text-lg shrink-0">dentalMap</span>
-          )}
-          
+          {!isSidebarOpen && <span className="font-macondo font-black text-blue-600 tracking-wider text-lg shrink-0">dentalMap</span>}
           <div className="flex-1 max-w-xl relative">
             <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input 
@@ -163,43 +156,41 @@ const App: React.FC = () => {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button 
-            onClick={handleSearch} 
-            disabled={isLoading} 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-xl text-[10px] font-black shadow-md shadow-blue-500/10 disabled:opacity-50 transition-all shrink-0 uppercase tracking-widest"
-          >
+          <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-xl text-[10px] font-black shadow-md shadow-blue-500/10 disabled:opacity-50 transition-all shrink-0 uppercase tracking-widest">
             {isLoading ? <i className="fas fa-spinner animate-spin"></i> : "ARA"}
           </button>
         </header>
 
-        {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-50/30">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-              <i className="fas fa-exclamation-circle text-lg"></i>
-              <span className="text-[10px] font-black uppercase tracking-wide">{error}</span>
+            <div className="mb-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <i className="fas fa-exclamation-triangle text-xl"></i>
+                <span className="text-[11px] font-black uppercase tracking-wide">Yapılandırma Hatası</span>
+              </div>
+              <p className="text-[10px] font-medium leading-relaxed">{error}</p>
+              <div className="mt-2 text-[9px] bg-white/50 p-2 rounded-lg border border-red-200">
+                <span className="font-bold">Çözüm:</span> Vercel Settings > Environment Variables kısmına <code className="bg-red-100 px-1 rounded">API_KEY</code> ekleyin ve ardından <strong>Redeploy</strong> yapın.
+              </div>
             </div>
           )}
 
           {isLoading && (
-            <div className="mb-6 bg-white p-4 rounded-2xl border border-blue-100 shadow-xl shadow-blue-500/5 animate-in slide-in-from-top-4">
+            <div className="mb-6 bg-white p-4 rounded-2xl border border-blue-100 shadow-xl shadow-blue-500/5">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg animate-pulse">
                   <i className="fas fa-satellite-dish"></i>
                 </div>
                 <div className="flex-1">
                    <div className="flex justify-between items-end mb-1">
-                     <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest">Tarama devam ediyor...</h4>
+                     <h4 className="text-blue-900 font-black text-[11px] uppercase tracking-widest">Veri Toplanıyor...</h4>
                      <span className="text-blue-600 font-black text-xs">{processedCount} / {targetCount}</span>
                    </div>
                    <p className="text-blue-600/60 text-[9px] font-black uppercase tracking-widest line-clamp-1">{statusMessage}</p>
                 </div>
               </div>
               <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-600 transition-all duration-700 ease-out" 
-                  style={{ width: `${Math.max(5, (processedCount/targetCount) * 100)}%` }}
-                ></div>
+                <div className="h-full bg-blue-600 transition-all duration-700 ease-out" style={{ width: `${Math.max(5, (processedCount/targetCount) * 100)}%` }}></div>
               </div>
             </div>
           )}
@@ -217,10 +208,10 @@ const App: React.FC = () => {
             
             <div className="flex items-center gap-2">
               <div className="bg-white border border-slate-100 p-0.5 rounded-xl flex shadow-sm">
-                <button onClick={() => setViewMode('CARD')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'CARD' ? 'bg-[#0F172A] text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                <button onClick={() => setViewMode('CARD')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'CARD' ? 'bg-[#0F172A] text-white' : 'text-slate-400'}`}>
                   <i className="fas fa-th-large text-xs"></i>
                 </button>
-                <button onClick={() => setViewMode('LIST')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'LIST' ? 'bg-[#0F172A] text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                <button onClick={() => setViewMode('LIST')} className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'LIST' ? 'bg-[#0F172A] text-white' : 'text-slate-400'}`}>
                   <i className="fas fa-list text-xs"></i>
                 </button>
               </div>
@@ -239,17 +230,8 @@ const App: React.FC = () => {
           ) : (
             <ClinicList clinics={filteredClinics} onUpdateStatus={updateStatus} />
           )}
-          
-          {filteredClinics.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center py-32 text-slate-200">
-              <i className="fas fa-search-minus text-5xl mb-4 opacity-20"></i>
-              <p className="font-black text-sm tracking-tight text-slate-300 uppercase">Veri bulunamadı</p>
-              <p className="text-[10px] text-slate-400 mt-2">Lütfen farklı bir bölge ismi deneyin</p>
-            </div>
-          )}
         </main>
 
-        {/* Footer - Kompakt Tasarım */}
         <footer className="bg-white border-t border-slate-100 px-4 py-2 shrink-0">
           <div className="flex flex-col gap-1.5 max-w-screen-2xl mx-auto">
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
@@ -266,14 +248,9 @@ const App: React.FC = () => {
                 <span className="text-[9px] font-bold text-slate-600">Olumsuz: {stats.negative}</span>
               </div>
             </div>
-
             <div className="flex flex-col items-center justify-center text-center pt-1 border-t border-slate-50">
-              <p className="text-[8px] text-slate-400 font-medium">
-                Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. Tüm haklar saklıdır © 2026
-              </p>
-              <p className="text-[9px] font-black text-[#0F172A] mt-0.5 tracking-wider">
-                <span className="text-blue-600">Enes YILMAZ</span> tarafından hazırlanmıştır.
-              </p>
+              <p className="text-[8px] text-slate-400 font-medium">Hastanın doktora ulaşmasını kolaylaştırmak amacıyla hazırlanmıştır. Tüm haklar saklıdır © 2026</p>
+              <p className="text-[9px] font-black text-[#0F172A] mt-0.5 tracking-wider"><span className="text-blue-600">Enes YILMAZ</span> tarafından hazırlanmıştır.</p>
             </div>
           </div>
         </footer>

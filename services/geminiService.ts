@@ -2,35 +2,45 @@
 import { GoogleGenAI } from "@google/genai";
 import { DentalClinic } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+// API anahtarını kontrol et ve başlat
+const getAIInstance = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    throw new Error("API_KEY_MISSING");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const fetchDentalClinics = async (
   location: string,
   onNewData: (clinics: DentalClinic[]) => void,
   onProgress?: (status: string) => void
 ) => {
-  if (!process.env.API_KEY || process.env.API_KEY === "undefined") {
-    throw new Error("Sistem yapılandırması tamamlanmadı: API_KEY eksik. Lütfen yönetici ile iletişime geçin.");
+  let ai;
+  try {
+    ai = getAIInstance();
+  } catch (e) {
+    throw new Error("Sistem Yapılandırması Hatası: Vercel üzerinde API_KEY tanımlanmamış veya Redeploy yapılmamış. Lütfen Environment Variables ayarlarını kontrol edin.");
   }
 
-  if (onProgress) onProgress(`${location} bölgesi taranıyor. Kayıtlar Google Maps ve Google Arama üzerinden analiz ediliyor...`);
+  if (onProgress) onProgress(`${location} bölgesi taranıyor. Kayıtlar Google kaynakları üzerinden analiz ediliyor...`);
 
   const searchPrompt = `
     GÖREV: "${location}" bölgesindeki TÜM diş hekimlerini, diş hastanelerini ve kliniklerini bul.
     
     HEDEF: En az 80-100 arası benzersiz ve güncel kayıt. 
-    Lütfen bölgeyi ilçeleriyle birlikte (Örn: ${location} merkez ve tüm ilçeler) derinlemesine tara.
+    Bölgeyi tüm ilçeleriyle birlikte (Örn: ${location} merkez ve ilçeler) derinlemesine tara.
     
     ÖNEMLİ KURALLAR:
-    1. Sadece sabit hatları değil, mutlaka CEP TELEFONU (GSM - 05xx...) numaralarını da bul ve listele.
-    2. Her kayıt için bilginin alındığı sayfanın URL'sini (sourceLinks) mutlaka ekle. 
-    3. Farklı kaynaklardan (Google Maps, Google Arama) gelen aynı isimleri tek bir kayıtta birleştir.
-    4. Fotoğraf URL'si ekleme.
+    1. Sabit hatlarla birlikte mutlaka CEP TELEFONU (GSM - 05xx...) numaralarını da bul.
+    2. Her kayıt için sourceLinks (kaynak URL) mutlaka ekle. 
+    3. Farklı kaynaklardan gelen aynı isimleri birleştir.
+    4. Fotoğraf ekleme.
     
     JSON FORMATI:
     [{
       "name": "Klinik/Hekim Adı",
-      "phone": "0422... , 0532... (Virgülle tüm bulunan numaraları ekle)",
+      "phone": "0422... , 0532... (Virgülle tüm numaraları ekle)",
       "address": "Tam Adres",
       "city": "Şehir",
       "district": "İlçe",
@@ -52,8 +62,6 @@ export const fetchDentalClinics = async (
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const results = JSON.parse(jsonMatch[0]);
-      
-      // Toplu veriyi gönder
       onNewData(results.map((r: any, idx: number) => ({
         ...r,
         id: `dent-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
@@ -64,6 +72,6 @@ export const fetchDentalClinics = async (
     }
   } catch (error: any) {
     console.error("Fetch Error:", error);
-    throw new Error("Tarama sırasında bir sorun oluştu. Lütfen API anahtarınızı kontrol edin veya tekrar deneyin.");
+    throw new Error("Tarama işlemi sırasında bir hata oluştu. Lütfen bağlantınızı ve API limitlerinizi kontrol edin.");
   }
 };
