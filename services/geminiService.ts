@@ -9,11 +9,11 @@ export const fetchDentalClinics = async (
   onNewData: (clinics: DentalClinic[]) => void,
   onProgress?: (status: string) => void
 ) => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY eksik! Lütfen Vercel ayarlarından API_KEY tanımlayın.");
+  if (!process.env.API_KEY || process.env.API_KEY === "undefined") {
+    throw new Error("Sistem yapılandırması tamamlanmadı: API_KEY eksik. Lütfen yönetici ile iletişime geçin.");
   }
 
-  if (onProgress) onProgress(`${location} için kapsamlı tarama yapılıyor. Kayıtlar parça parça işleniyor...`);
+  if (onProgress) onProgress(`${location} bölgesi taranıyor. Kayıtlar Google Maps ve Google Arama üzerinden analiz ediliyor...`);
 
   const searchPrompt = `
     GÖREV: "${location}" bölgesindeki TÜM diş hekimlerini, diş hastanelerini ve kliniklerini bul.
@@ -52,6 +52,8 @@ export const fetchDentalClinics = async (
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const results = JSON.parse(jsonMatch[0]);
+      
+      // Toplu veriyi gönder
       onNewData(results.map((r: any, idx: number) => ({
         ...r,
         id: `dent-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
@@ -62,6 +64,6 @@ export const fetchDentalClinics = async (
     }
   } catch (error: any) {
     console.error("Fetch Error:", error);
-    throw new Error("Veri çekme sırasında bir hata oluştu. Lütfen tekrar deneyin.");
+    throw new Error("Tarama sırasında bir sorun oluştu. Lütfen API anahtarınızı kontrol edin veya tekrar deneyin.");
   }
 };
