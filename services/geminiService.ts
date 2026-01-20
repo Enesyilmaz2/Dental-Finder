@@ -2,27 +2,30 @@
 import { GoogleGenAI } from "@google/genai";
 import { DentalClinic } from "../types";
 
-// API anahtarını güvenli bir şekilde al, hata varsa fırlatma, sadece null dön
 const getAIInstance = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) return null;
+
+  if (!apiKey) {
+    console.error("API_KEY okunamadı. Vercel Settings > Environment Variables kısmında API_KEY tanımlı olmalı ve mutlaka REDEPLOY yapılmalıdır.");
+    return null;
+  }
+  
   return new GoogleGenAI({ apiKey });
 };
-
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 const searchOnMaps = async (query: string): Promise<DentalClinic[]> => {
   try {
     const ai = getAIInstance();
     if (!ai) {
-      throw new Error("API anahtarı eksik! Vercel Settings > Environment Variables kısmına API_KEY eklemelisiniz.");
+      throw new Error("API anahtarı eksik! Vercel Settings > Environment Variables kısmına API_KEY eklemeli ve ardından Deployments sekmesinden REDEPLOY yapmalısınız.");
     }
 
+    // Google Maps tool'u şu an gemini-2.5 serisinde aktiftir.
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite-latest",
-      contents: `Google Haritalar (Google Maps) verilerini kullanarak şu spesifik sorgu için tüm işletmeleri listele: "${query}". 
-      Lütfen sadece gerçek işletmeleri şu JSON yapısında döndür: 
-      [{"name": "...", "phone": "...", "address": "...", "city": "...", "district": "...", "website": "...", "rating": 4.5, "userRatingsTotal": 120, "mapsUri": "..."}]`,
+      model: "gemini-2.5-flash",
+      contents: `Google Haritalar verilerini kullanarak "${query}" araması için aktif diş hekimi ve kliniklerini listele. 
+      Yanıtı SADECE aşağıdaki JSON formatında ver:
+      [{"name": "...", "phone": "...", "address": "...", "city": "...", "district": "...", "website": "...", "rating": 5, "userRatingsTotal": 10, "mapsUri": "..."}]`,
       config: {
         tools: [{ googleMaps: {} }]
       }
@@ -33,11 +36,11 @@ const searchOnMaps = async (query: string): Promise<DentalClinic[]> => {
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
+    return [];
   } catch (error: any) {
-    console.error("Sorgu hatası:", query, error);
-    throw error;
+    console.error("Arama Hatası:", error);
+    throw new Error(error.message || "Arama sırasında bir hata oluştu.");
   }
-  return [];
 };
 
 export const fetchDentalClinics = async (
@@ -45,28 +48,22 @@ export const fetchDentalClinics = async (
   onNewData: (clinics: DentalClinic[]) => void,
   onProgress?: (status: string) => void
 ) => {
-  const baseCategories = ["diş hekimi", "diş hastanesi", "dental klinik"];
-  let targetQueries: string[] = [];
-  
-  baseCategories.forEach(cat => {
-    targetQueries.push(`${location} ${cat}`);
-  });
+  const query = `${location} diş hekimleri`;
+  if (onProgress) onProgress(`${location} için veriler toplanıyor...`);
 
-  if (onProgress) onProgress(`${location} için tarama başlatıldı...`);
-
-  for (let i = 0; i < targetQueries.length; i++) {
-    const query = targetQueries[i];
-    try {
-      const results = await searchOnMaps(query);
-      if (results.length > 0) {
-        onNewData(results.map((r, idx) => ({
-          ...r,
-          id: `maps-${Date.now()}-${Math.random()}-${idx}`
-        })));
-      }
-    } catch (e: any) {
-      throw e;
+  try {
+    const results = await searchOnMaps(query);
+    if (results && results.length > 0) {
+      onNewData(results.map((r, idx) => ({
+        ...r,
+        id: `dent-${Date.now()}-${idx}`,
+        status: 'none',
+        notes: ''
+      })));
+    } else {
+      if (onProgress) onProgress("Sonuç bulunamadı.");
     }
-    await delay(1000);
+  } catch (e: any) {
+    throw e;
   }
 };
