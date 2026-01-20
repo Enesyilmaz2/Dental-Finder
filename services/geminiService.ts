@@ -3,12 +3,17 @@ import { GoogleGenAI } from "@google/genai";
 import { DentalClinic } from "../types";
 
 const getAIInstance = () => {
-  // Netlify ortam değişkenlerini doğrudan okuyabilir
-  const apiKey = process.env.API_KEY || localStorage.getItem('DENTAL_MAP_SECRET_KEY');
+  // Vercel/Netlify için 'import.meta.env' veya 'process.env' kontrolü
+  // @ts-ignore
+  const envKey = typeof process !== 'undefined' ? process.env.API_KEY : null;
+  const manualKey = localStorage.getItem('DENTAL_MAP_SECRET_KEY');
   
-  if (!apiKey || apiKey === "undefined" || apiKey === "" || apiKey === "null") {
+  const apiKey = envKey || manualKey;
+  
+  if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
     throw new Error("API_KEY_REQUIRED");
   }
+  
   return new GoogleGenAI({ apiKey });
 };
 
@@ -20,27 +25,24 @@ export const fetchDentalClinics = async (
   let ai;
   try {
     ai = getAIInstance();
-  } catch (e) {
+  } catch (e: any) {
     throw new Error("API_KEY_REQUIRED");
   }
 
-  if (onProgress) onProgress(`${location} bölgesi için derinlemesine Google Maps ve Web taraması yapılıyor...`);
+  if (onProgress) onProgress(`${location} bölgesi taranıyor...`);
 
   const searchPrompt = `
-    GÖREV: "${location}" şehrindeki TÜM diş hekimlerini, diş kliniklerini ve diş hastanelerini bul. 
-    İlçeleri (Örn: Yeşilyurt, Battalgazi, Konak vb.) tek tek tara. 
-    HEDEF: Mümkün olduğunca çok (en az 80-100) kayıt bulmaya çalış.
-    ÖZELLİKLE cep telefonlarını (05xx) ve güncel sabit hatları bul. 
-    Aynı isimli olanları birleştir, farklı kaynaklardaki telefonları harmanla.
-    
-    ÇIKTI FORMATI: Sadece JSON listesi dön.
+    GÖREV: "${location}" şehrindeki tüm diş hekimlerini, diş kliniklerini ve diş hastanelerini bul. 
+    İlçeleri tek tek tara. En az 20-30 farklı kayıt bulmaya çalış.
+    Telefon numaralarını (özellikle 05xx cep telefonlarını) bul.
+    ÇIKTI FORMATI: Sadece JSON.
     [{
       "name": "Klinik Adı",
-      "phone": "05xx..., 0422... (Tüm numaralar virgülle)",
-      "address": "Tam Adres",
+      "phone": "Telefon numaraları",
+      "address": "Açık Adres",
       "city": "${location}",
-      "district": "İlçe Adı",
-      "sourceLinks": [{"name": "Google Maps", "url": "https://maps.google.com/..."}]
+      "district": "İlçe",
+      "sourceLinks": [{"name": "Google Maps", "url": "https://maps.google.com"}]
     }]
   `;
 
@@ -61,14 +63,19 @@ export const fetchDentalClinics = async (
       const results = JSON.parse(jsonMatch[0]);
       onNewData(results.map((r: any, idx: number) => ({
         ...r,
-        id: `dent-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `dent-${Date.now()}-${idx}`,
         status: 'none',
         notes: '',
-        sources: r.sourceLinks?.map((s: any) => s.name) || ["Google"]
+        sources: r.sourceLinks?.map((s: any) => s.name) || ["Google Search"]
       })));
     }
   } catch (error: any) {
-    console.error("Fetch Error:", error);
-    throw new Error("Tarama işlemi başarısız. API anahtarını veya internet bağlantınızı kontrol edin.");
+    console.error("Gemini Error:", error);
+    // Eğer hata 404/403 ise API key kaynaklıdır
+    if (error.message?.includes("not found") || error.message?.includes("key")) {
+      localStorage.removeItem('DENTAL_MAP_SECRET_KEY');
+      throw new Error("API_KEY_REQUIRED");
+    }
+    throw new Error("Tarama başarısız: " + (error.message || "Bilinmeyen hata"));
   }
 };
