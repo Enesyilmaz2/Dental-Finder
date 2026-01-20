@@ -11,115 +11,149 @@ interface ClinicCardProps {
 const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onUpdateStatus, onUpdateNote }) => {
   const [showNoteInput, setShowNoteInput] = useState(false);
 
-  const clinicImages = [
-    "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5",
-    "https://images.unsplash.com/photo-1629909613654-28e377c37b09",
-    "https://images.unsplash.com/photo-1598256989800-fe5f95da9787",
-    "https://images.unsplash.com/photo-1516549655169-df83a0774514"
-  ];
-  const randomImg = clinicImages[Math.floor(Math.abs(clinic.name.length % 4))] + "?auto=format&fit=crop&q=80&w=400";
+  const phoneNumbers = clinic.phone ? clinic.phone.split(/[,/]/).map(p => p.trim()).filter(p => p) : [];
 
-  const openInMaps = () => {
-    const query = encodeURIComponent(`${clinic.name} ${clinic.address} ${clinic.city}`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+  const getStatusStyle = () => {
+    if (clinic.status === 'positive') return 'border-emerald-500 bg-emerald-50/20';
+    if (clinic.status === 'negative') return 'border-red-500 bg-red-50/20';
+    if (clinic.status === 'contacted') return 'border-[#A3E635] bg-[#A3E635]/10';
+    return 'border-slate-100 bg-white';
   };
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all flex flex-col h-full border-t-4 ${
-      clinic.status === 'positive' ? 'border-t-emerald-500' : 
-      clinic.status === 'negative' ? 'border-t-red-500' : 
-      clinic.status === 'contacted' ? 'border-t-amber-500' : 'border-t-transparent'
-    }`}>
-      <div className="h-32 bg-slate-200 relative overflow-hidden group cursor-pointer" onClick={openInMaps}>
-        <img src={randomImg} alt={clinic.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute top-2 right-2 flex gap-1">
-           {clinic.status !== 'none' && (
-             <div className={`px-2 py-1 rounded-md text-[9px] font-black text-white shadow-lg uppercase ${
-               clinic.status === 'positive' ? 'bg-emerald-500' : 
-               clinic.status === 'negative' ? 'bg-red-500' : 'bg-amber-500'
-             }`}>
-               {clinic.status === 'positive' ? 'Olumlu' : clinic.status === 'negative' ? 'Olumsuz' : 'İletişimde'}
-             </div>
-           )}
-        </div>
-      </div>
-
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="text-sm font-bold text-slate-800 leading-tight mb-2 line-clamp-1">{clinic.name}</h3>
-        
-        <div className="space-y-2 text-[11px] text-slate-600 mb-4">
-          <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
-            <div className="flex items-center gap-2">
-              <i className="fas fa-phone-alt text-emerald-500"></i>
-              <span className="font-black text-slate-700">{clinic.phone || 'Telefon Yok'}</span>
-            </div>
-            {clinic.phone && (
-              <a href={`tel:${clinic.phone}`} className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all">
-                <i className="fas fa-phone"></i>
-              </a>
-            )}
+    <div className={`group rounded-[1.5rem] border shadow-sm transition-all duration-300 flex flex-col h-full overflow-hidden ${getStatusStyle()}`}>
+      <div className="p-5 flex flex-col h-full gap-4">
+        {/* Başlık Bölümü */}
+        <div>
+          <h3 className="text-slate-900 font-black text-base leading-tight uppercase tracking-tighter line-clamp-2 min-h-[2.5rem]">
+            {clinic.name}
+          </h3>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+             <span className="text-[8px] font-black bg-blue-600 text-white px-2.5 py-1 rounded-lg uppercase tracking-widest">
+               {clinic.district || 'Merkez'}
+             </span>
+             <span className="text-[8px] font-black border border-slate-200 text-slate-400 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+               {clinic.city}
+             </span>
           </div>
-          <div className="flex items-start gap-2 px-2">
-            <i className="fas fa-map-marker-alt text-blue-500 mt-0.5"></i>
-            <span className="line-clamp-2">{clinic.district}, {clinic.city}</span>
+        </div>
+
+        {/* Telefonlar Bölümü - Tüm numaralar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">İletişim</span>
+          </div>
+          <div className="grid grid-cols-1 gap-1">
+            {phoneNumbers.map((num, i) => (
+              <a 
+                key={i}
+                href={`tel:${num}`} 
+                className="flex items-center justify-between bg-slate-50 hover:bg-slate-100 p-2.5 rounded-xl border border-slate-200/30 transition-all group/call"
+              >
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">
+                    {num.startsWith('05') || num.startsWith('5') ? 'Cep Telefonu' : 'Sabit Hat'}
+                  </span>
+                  <span className="text-xs font-black text-slate-800 tracking-tight">{num}</span>
+                </div>
+                <div className="w-7 h-7 bg-blue-500 text-white rounded-lg flex items-center justify-center group-hover/call:scale-105 transition-transform shadow-md shadow-blue-500/10">
+                  <i className="fas fa-phone-flip text-[9px]"></i>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Adres */}
+        <div className="bg-slate-50/20 p-3 rounded-xl border border-slate-100">
+          <div className="flex items-start gap-2.5">
+            <i className="fas fa-map-marker-alt text-slate-300 mt-1 text-xs"></i>
+            <p className="text-[9px] text-slate-500 font-bold leading-relaxed line-clamp-2 uppercase tracking-tight">{clinic.address}</p>
           </div>
         </div>
 
         {/* Not Alanı */}
-        <div className="mt-auto pt-3 border-t border-slate-100">
+        <div className="mt-1">
           {showNoteInput ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <textarea 
-                className="w-full p-2 text-[10px] border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"
-                placeholder="Arama notu ekleyin..."
-                rows={2}
+                className="w-full p-3 text-[10px] border border-blue-100 bg-white rounded-xl focus:border-blue-500 outline-none min-h-[60px] font-bold text-slate-700 shadow-inner"
+                placeholder="Özel notlar..."
                 value={clinic.notes}
                 onChange={(e) => onUpdateNote(clinic.id, e.target.value)}
                 autoFocus
               />
-              <button onClick={() => setShowNoteInput(false)} className="w-full text-[9px] font-bold text-blue-600 text-right uppercase">Notu Kaydet</button>
+              <button 
+                onClick={() => setShowNoteInput(false)} 
+                className="w-full py-2 bg-slate-900 text-white rounded-lg text-[8px] font-black uppercase tracking-widest"
+              >
+                Notu Kaydet
+              </button>
             </div>
           ) : (
             <div 
               onClick={() => setShowNoteInput(true)}
-              className="p-2 bg-yellow-50/50 rounded-lg border border-yellow-100 min-h-[40px] cursor-pointer hover:bg-yellow-50 transition-all"
+              className="p-2.5 bg-blue-50/10 rounded-xl border border-dashed border-blue-100/50 cursor-pointer hover:bg-blue-50/30 transition-all"
             >
-              <p className="text-[10px] text-slate-500 italic">
-                {clinic.notes || 'Buraya not eklemek için tıklayın (örn: cevap vermedi)...'}
-              </p>
+              <div className="flex items-center gap-2 text-blue-700/30">
+                <i className="fas fa-pen text-[9px]"></i>
+                <span className="text-[8px] font-black uppercase tracking-widest truncate">
+                  {clinic.notes || 'Hekim notu ekleyin...'}
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Aksiyon Butonları */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        {/* CRM Aksiyonları */}
+        <div className="mt-auto pt-3 border-t border-slate-50">
           {clinic.status === 'none' ? (
             <button 
               onClick={() => onUpdateStatus(clinic.id, 'contacted')}
-              className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2"
+              className="w-full bg-[#A3E635] hover:bg-[#8FD42C] text-slate-900 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-md shadow-lime-500/10 transition-all active:scale-95 border-b-2 border-[#84CC16]"
             >
-              <i className="fas fa-comment-dots"></i> İLETİŞİM KURULDU
+              Görüşme Bilgisi Ekle
             </button>
           ) : (
-            <div className="w-full flex gap-2">
-              <button 
-                onClick={() => onUpdateStatus(clinic.id, 'positive')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all ${clinic.status === 'positive' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}
-              >
-                OLUMLU
-              </button>
-              <button 
-                onClick={() => onUpdateStatus(clinic.id, 'negative')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all ${clinic.status === 'negative' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}
-              >
-                OLUMSUZ
-              </button>
-              <button onClick={() => onUpdateStatus(clinic.id, 'none')} className="bg-slate-100 px-3 py-2 rounded-xl text-slate-400 hover:text-slate-600">
-                <i className="fas fa-undo"></i>
+            <div className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
+                <button 
+                  onClick={() => onUpdateStatus(clinic.id, 'positive')}
+                  className={`py-2.5 rounded-lg text-[8px] font-black uppercase transition-all flex items-center justify-center gap-1.5 border-b-2 ${clinic.status === 'positive' ? 'bg-emerald-500 text-white border-emerald-700' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-emerald-50'}`}
+                >
+                  <i className="fas fa-check text-[9px]"></i> Olumlu
+                </button>
+                <button 
+                  onClick={() => onUpdateStatus(clinic.id, 'negative')}
+                  className={`py-2.5 rounded-lg text-[8px] font-black uppercase transition-all flex items-center justify-center gap-1.5 border-b-2 ${clinic.status === 'negative' ? 'bg-red-500 text-white border-red-700' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-red-50'}`}
+                >
+                  <i className="fas fa-times text-[9px]"></i> Olumsuz
+                </button>
+              </div>
+              <button onClick={() => onUpdateStatus(clinic.id, 'none')} className="text-[7px] text-slate-300 font-black hover:text-slate-400 uppercase tracking-widest text-center py-0.5">
+                 Görüşmeyi Sıfırla
               </button>
             </div>
           )}
         </div>
+
+        {/* Kaynak Linkleri */}
+        {clinic.sourceLinks && clinic.sourceLinks.length > 0 && (
+          <div className="pt-2 border-t border-slate-50 flex flex-wrap gap-1.5">
+            {clinic.sourceLinks.map((link, idx) => (
+              <a 
+                key={idx}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[7px] font-black bg-slate-100 text-slate-400 hover:bg-blue-600 hover:text-white px-2 py-0.5 rounded transition-all flex items-center gap-1"
+              >
+                <i className="fas fa-external-link-alt text-[6px]"></i>
+                {link.name}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

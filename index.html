@@ -1,15 +1,30 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turkiye Dental Finder</title>
+    <title>dentalMap | Profesyonel Klinik Rehberi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Macondo&display=swap');
+        
+        body { 
+          font-family: 'Inter', sans-serif; 
+          overflow: hidden;
+        }
+        
+        .font-macondo { font-family: 'Macondo', cursive; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Custom selection color */
+        ::selection {
+          background-color: #3b82f6;
+          color: white;
+        }
     </style>
 <script type="importmap">
 {
@@ -22,7 +37,7 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-[#F8FAFC]">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

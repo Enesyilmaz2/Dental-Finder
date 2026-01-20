@@ -2,68 +2,66 @@
 import { GoogleGenAI } from "@google/genai";
 import { DentalClinic } from "../types";
 
-const getAIInstance = () => {
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
-    console.error("API_KEY okunamadı. Vercel Settings > Environment Variables kısmında API_KEY tanımlı olmalı ve mutlaka REDEPLOY yapılmalıdır.");
-    return null;
-  }
-  
-  return new GoogleGenAI({ apiKey });
-};
-
-const searchOnMaps = async (query: string): Promise<DentalClinic[]> => {
-  try {
-    const ai = getAIInstance();
-    if (!ai) {
-      throw new Error("API anahtarı eksik! Vercel Settings > Environment Variables kısmına API_KEY eklemeli ve ardından Deployments sekmesinden REDEPLOY yapmalısınız.");
-    }
-
-    // Google Maps tool'u şu an gemini-2.5 serisinde aktiftir.
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Google Haritalar verilerini kullanarak "${query}" araması için aktif diş hekimi ve kliniklerini listele. 
-      Yanıtı SADECE aşağıdaki JSON formatında ver:
-      [{"name": "...", "phone": "...", "address": "...", "city": "...", "district": "...", "website": "...", "rating": 5, "userRatingsTotal": 10, "mapsUri": "..."}]`,
-      config: {
-        tools: [{ googleMaps: {} }]
-      }
-    });
-
-    const text = response.text || "";
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    return [];
-  } catch (error: any) {
-    console.error("Arama Hatası:", error);
-    throw new Error(error.message || "Arama sırasında bir hata oluştu.");
-  }
-};
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
 export const fetchDentalClinics = async (
   location: string,
   onNewData: (clinics: DentalClinic[]) => void,
   onProgress?: (status: string) => void
 ) => {
-  const query = `${location} diş hekimleri`;
-  if (onProgress) onProgress(`${location} için veriler toplanıyor...`);
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY eksik! Lütfen Vercel ayarlarından API_KEY tanımlayın.");
+  }
+
+  if (onProgress) onProgress(`${location} için kapsamlı tarama yapılıyor. Kayıtlar parça parça işleniyor...`);
+
+  const searchPrompt = `
+    GÖREV: "${location}" bölgesindeki TÜM diş hekimlerini, diş hastanelerini ve kliniklerini bul.
+    
+    HEDEF: En az 80-100 arası benzersiz ve güncel kayıt. 
+    Lütfen bölgeyi ilçeleriyle birlikte (Örn: ${location} merkez ve tüm ilçeler) derinlemesine tara.
+    
+    ÖNEMLİ KURALLAR:
+    1. Sadece sabit hatları değil, mutlaka CEP TELEFONU (GSM - 05xx...) numaralarını da bul ve listele.
+    2. Her kayıt için bilginin alındığı sayfanın URL'sini (sourceLinks) mutlaka ekle. 
+    3. Farklı kaynaklardan (Google Maps, Google Arama) gelen aynı isimleri tek bir kayıtta birleştir.
+    4. Fotoğraf URL'si ekleme.
+    
+    JSON FORMATI:
+    [{
+      "name": "Klinik/Hekim Adı",
+      "phone": "0422... , 0532... (Virgülle tüm bulunan numaraları ekle)",
+      "address": "Tam Adres",
+      "city": "Şehir",
+      "district": "İlçe",
+      "sourceLinks": [{"name": "Google Maps", "url": "https://www.google.com/maps/..."}]
+    }]
+  `;
 
   try {
-    const results = await searchOnMaps(query);
-    if (results && results.length > 0) {
-      onNewData(results.map((r, idx) => ({
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: searchPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        temperature: 0.1,
+      }
+    });
+
+    const text = response.text || "";
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const results = JSON.parse(jsonMatch[0]);
+      onNewData(results.map((r: any, idx: number) => ({
         ...r,
-        id: `dent-${Date.now()}-${idx}`,
+        id: `dent-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
         status: 'none',
-        notes: ''
+        notes: '',
+        sources: r.sourceLinks?.map((s: any) => s.name) || []
       })));
-    } else {
-      if (onProgress) onProgress("Sonuç bulunamadı.");
     }
-  } catch (e: any) {
-    throw e;
+  } catch (error: any) {
+    console.error("Fetch Error:", error);
+    throw new Error("Veri çekme sırasında bir hata oluştu. Lütfen tekrar deneyin.");
   }
 };

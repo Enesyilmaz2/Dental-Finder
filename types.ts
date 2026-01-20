@@ -1,8 +1,13 @@
 
+export interface SourceLink {
+  name: string;
+  url: string;
+}
+
 export interface DentalClinic {
   id: string;
   name: string;
-  phone: string;
+  phone: string; // Virgülle ayrılmış birden fazla numara (sabit ve cep)
   city: string;
   district: string;
   address: string;
@@ -10,13 +15,10 @@ export interface DentalClinic {
   rating?: number;
   userRatingsTotal?: number;
   mapsUri?: string;
-  status?: 'none' | 'contacted' | 'positive' | 'negative';
-  notes?: string;
+  status: 'none' | 'contacted' | 'positive' | 'negative';
+  notes: string;
+  sources: string[]; // Kaynak isimleri
+  sourceLinks?: SourceLink[]; // Tıklanabilir kaynak linkleri
 }
 
-export enum ViewMode {
-  CARD = 'CARD',
-  LIST = 'LIST'
-}
-
-export type PageMode = 'HOME' | 'CONVERSATIONS_POSITIVE' | 'CONVERSATIONS_NEGATIVE' | 'CITY_LISTS';
+export type PageMode = 'HOME' | 'CITY_LISTS' | 'CONVERSATIONS_POSITIVE' | 'CONVERSATIONS_NEGATIVE';
