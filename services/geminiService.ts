@@ -26,31 +26,32 @@ export const fetchDentalClinics = async (
     throw new Error("API_KEY_REQUIRED");
   }
 
-  // Arama stratejisi: Birden fazla adımda derinlemesine arama
+  // Kota dostu arama adımları
   const searchSteps = [
-    `${location} tüm diş klinikleri listesi`,
-    `${location} özel diş hekimleri muayenehaneleri`,
-    `${location} diş hastaneleri ve ağız sağlığı merkezleri`
+    { query: `${location} en popüler diş klinikleri ve hastaneleri`, label: "Ana Merkezler" },
+    { query: `${location} özel diş hekimi muayenehaneleri listesi`, label: "Muayenehaneler" },
+    { query: `${location} ağız ve diş sağlığı poliklinikleri rehberi`, label: "Poliklinikler" }
   ];
 
   for (let i = 0; i < searchSteps.length; i++) {
-    if (onProgress) onProgress(`Arama Adımı ${i + 1}/${searchSteps.length}: ${searchSteps[i]}`);
+    const step = searchSteps[i];
+    if (onProgress) onProgress(`Arama Adımı ${i + 1}/${searchSteps.length}: ${step.label} taranıyor...`);
 
     const searchPrompt = `
-      GÖREV: "${searchSteps[i]}" sorgusu için Google ve Google Maps verilerini kullanarak kapsamlı bir liste oluştur.
-      KRİTERLER:
-      - Mümkün olduğunca çok (en az 20 adet) farklı kayıt bul.
-      - Telefon numaralarını (sabit ve özellikle 05xx ile başlayan cep numaralarını) mutlaka dahil et.
-      - Her kayıt için verinin alındığı orijinal linki (Google Maps linki veya web sitesi) "sourceLinks" içine ekle.
+      GÖREV: "${step.query}" sorgusu için Google ve Google Maps kaynaklı veri topla.
+      HEDEF: En az 15-20 adet benzersiz kayıt bul.
+      BİLGİLER:
+      - Telefon: Varsa tüm numaraları (sabit ve cep) al.
+      - Kaynak: Bilginin alındığı linki (Google Maps veya web sitesi) mutlaka ekle.
       
-      ÇIKTI FORMATI: Sadece JSON listesi döndür.
+      ÇIKTI SADECE JSON:
       [{
-        "name": "Klinik/Hekim Adı",
-        "phone": "0212... / 0532...",
-        "address": "Tam Adres",
+        "name": "İsim",
+        "phone": "Tel1 / Tel2",
+        "address": "Adres",
         "city": "${location}",
-        "district": "İlgili İlçe",
-        "sourceLinks": [{"name": "Kaynak Adı", "url": "Link"}]
+        "district": "İlçe",
+        "sourceLinks": [{"name": "Google Maps", "url": "https://..."}]
       }]
     `;
 
@@ -79,13 +80,19 @@ export const fetchDentalClinics = async (
         onNewData(formattedResults);
       }
     } catch (error: any) {
-      console.error("Adım Hatası:", error);
-      if (error.message?.includes("quota") || error.message?.includes("429")) {
-        throw new Error("API Kotası Doldu. Lütfen bir süre bekleyip tekrar deneyin veya ücretli plana geçiş yapın.");
+      console.error("Kota veya Ağ Hatası:", error);
+      if (error.message?.includes("429") || error.message?.includes("quota")) {
+        // Kota hatasında işlemi tamamen kesmek yerine bir sonraki adım için uzun bekleyebiliriz 
+        // ama kullanıcıya bildirmek daha sağlıklı.
+        if (onProgress) onProgress("Kota sınırı! 10 saniye bekleniyor...");
+        await new Promise(r => setTimeout(r, 10000));
+        continue; // Bir sonraki adımı dene
       }
     }
     
-    // API'yi yormamak için kısa bir bekleme
-    if (i < searchSteps.length - 1) await new Promise(r => setTimeout(r, 1000));
+    // ÜCRETSİZ PLAN İÇİN KRİTİK: Her istek arası 2 saniye bekle
+    if (i < searchSteps.length - 1) {
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 };
